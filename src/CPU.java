@@ -14,7 +14,7 @@ public class CPU{
     *@return Void.
     */
     public static void Execute(){
-        while (totalBytes + 0x200 > Registers.readPC()){
+        while ((totalBytes + 0x210) >= Registers.readPC()){
             CPURun();
             Registers.currentState();
         }
@@ -27,6 +27,22 @@ public class CPU{
 	public static void CPURun(){
         decode();
 	}
+
+    /* @brief Run the CPU based till index. Called for every CPU cycle. This will call decode.
+    *
+    *@params None.
+    *@return Void.
+    */
+    public static void CPURunTo(int index){
+        CPURun();
+        while ((index + 0x200) != Registers.readPC()) {
+            if ((totalBytes + 0x210) <= Registers.readPC()) {
+                break;
+            }
+            CPURun();
+            Registers.currentState();
+        }
+    }
 
     /* @brief Taken two values, will concatenate by little endian method.
     *
@@ -59,6 +75,7 @@ public class CPU{
         }
         System.out.print("value8: " + Integer.toHexString(value8) + " value16: " + Integer.toHexString(value16) + "    ");
         Registers.incrPC(Databank.getJumpCode(opCode));
+        System.out.println("Total Bytes: " + totalBytes);
 
 
 

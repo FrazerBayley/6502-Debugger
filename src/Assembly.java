@@ -26,7 +26,18 @@ public class Assembly{
 		instructions = ins;
 		labels = ls;
 		db = new Databank();
+		CPU.totalBytes = -1;
 	}
+
+	public int getLineLookup(int index){
+	    int tmp = 0;
+        if(index == 0){
+            tmp = lineLookup[index] + 1;
+        } else {
+            tmp = lineLookup[index-1] + 1;
+        }
+        return tmp;
+    }
 
     /*@brief Gets the array of instructions when called. Array is size
     * Global.MAX_SIZE/8
@@ -78,7 +89,8 @@ public class Assembly{
 				continue;
 			}
 			if (instruction.equals("LABEL")) {
-				binaryInstructions[i++] = 0xEA ; //NOP
+				//binaryInstructions[i++] = 0xEA ; //NOP
+				i++;
 				continue;
 			}
 			setupQueue(instruction);
@@ -104,9 +116,12 @@ public class Assembly{
 		String instName = instruction.substring(0, 3);
 		String[] params = instruction.split(" ");
 	    if (checkImplicit(instruction)){
+	    	System.out.println("IS IMPLICIT: " + instruction);
 	    	modebit = 1;
 	    	int opcode= db.getOPCode(instName, modebit);
+
 	    	addBytes(opcode);
+			System.out.println("IS IMPLICIT: " + instruction + "opcode: " + Integer.toHexString(opcode));
 	    	binaryInstructions[i++] = opcode;
 	    }
 		else if (checkAbsoluteX(instruction)){
@@ -117,14 +132,34 @@ public class Assembly{
 			modebit = 10;
 			addToQueue(instName, modebit, params);
 		}
+		else if (checkIndirect(instruction)){
+	    	modebit = 11;
+	    	addToQueue(instName, modebit, params);
+	    }
 		else if (checkAbsolute(instruction)){
 			modebit = 8;
 			addToQueue(instName, modebit, params);
 		}
-	    else if (checkIndirect(instruction)){
+	    else if (checkIndirectLabel(instruction)){
 	    	modebit = 11;
-	    	addToQueue(instName, modebit, params);
+	    	int index = 0;
+	    	int tmp = getLabelIndex(params[1].replaceAll("\\p{P}",""));
+
+	    	//minus 1 for previous line, add 1 byte to it.
+			if(tmp == 0){
+				index = lineLookup[tmp] + 1;
+			} else {
+				index = lineLookup[tmp-1] + 1;
+			}
+			addToQueue(instName, modebit, index);
 	    }
+		else if (checkAbsoluteLabel(instruction)){
+			modebit = 8;
+			
+			int tmp = getLabelIndex(params[1]);
+			int index = lineLookup[tmp-1] + 1;
+			addToQueue(instName, modebit, index);
+		}
 	    else if (checkIndirectX(instruction)){
 	    	modebit = 12;
 	    	addToQueue(instName, modebit, params);
@@ -157,18 +192,28 @@ public class Assembly{
 	    }
 	    else if (checkBranch(instruction)){
 	    	modebit = 7;
-	    	System.out.println(params[1]);
+	    	int index = 0;
 			int tmp = getLabelIndex(params[1]);
-			int index = lineLookup[tmp-1] + 1;
+			//minus 1 for previous line, add 1 byte to it.
+			if(tmp == 0){
+				index = lineLookup[tmp] + 1;
+				System.out.println("index if tmp=0: " +index);
+			} else {
+				index = lineLookup[tmp-1] + 1;
+				System.out.println("index if tmp!==0: " +index);
+			}
 			addToQueue(instName, modebit, index);		
-	    }
+	    }else {
+	    	System.out.println("Not an instruction: " + instruction);
+		}
 		return modebit;
 	}
 
 	private void addToQueue(String instName, int modebit, String[] params) {
 		int opcode= db.getOPCode(instName, modebit);
 		addBytes(opcode);
-		int paramNum = Integer.parseInt( params[1].replaceAll("[^-?0-9]+", ""), 16);
+		System.out.println(instName + " and param: " + Arrays.toString(params));
+		int paramNum = Integer.parseInt( params[1].replaceAll("[^-?0-9A-Fa-f]+", ""), 16);
     	binaryInstructions[i++] = opcode;
     	// check if 16 bit
     	if (modebit >= 8 && modebit <= 11){
@@ -186,7 +231,7 @@ public class Assembly{
 		int opcode= db.getOPCode(instName, modebit);
 		addBytes(opcode);
 		binaryInstructions[i++] = opcode;
-    	binaryInstructions[i++] = param;  
+		binaryInstructions[i++] = param;
 	}
 
 	private boolean checkImmediate(String inst){
@@ -231,14 +276,17 @@ public class Assembly{
 	}
 	private boolean checkBranch(String inst){
 		String pattern = "B\\w*";
+		String argPattern = "\\w*";
+		Pattern argMatcher = Pattern.compile(argPattern);
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
+		System.out.println("In branch: " + inst);
 		if (m.find()){
 			String[] s = inst.split(" ");
 			if (s.length < 2) return false;
 			String arg = s[1];
-			Matcher m1 = r.matcher(arg);
-			return m1.find();
+			Matcher mArg = argMatcher.matcher(arg);
+			return mArg.find();
 		}
 		return false;
 	}
@@ -247,6 +295,21 @@ public class Assembly{
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
 		return m.find();
+	}
+	private boolean checkAbsoluteLabel(String inst){
+		String pattern = "(JMP|JSR) [0-9a-zA-Z]+";
+		Pattern r = Pattern.compile(pattern);
+		Matcher m = r.matcher(inst);
+		if (m.find()){
+			String[] s = inst.split(" ");
+			if (s.length < 2) return false;
+			String arg = s[1];
+			String p2 = "[0-9a-zA-Z]+";
+			Pattern r2 = Pattern.compile(p2);
+			Matcher m2 = r2.matcher(arg);
+			return m2.find();
+		}
+		return false;
 	}
 	private boolean checkAbsoluteX(String inst){
 		String pattern = "\\$?[0-9a-f]{3,4},X";
@@ -265,6 +328,21 @@ public class Assembly{
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
 		return m.find();
+	}
+	private boolean checkIndirectLabel(String inst){
+		String pattern = "JMP \\([0-9a-zA-Z]+\\)";
+		Pattern r = Pattern.compile(pattern);
+		Matcher m = r.matcher(inst);
+		if (m.find()){
+			String[] s = inst.split(" ");
+			if (s.length < 2) return false;
+			String arg = s[1];
+			String p2 = "\\([0-9a-zA-Z]+\\)";
+			Pattern r2 = Pattern.compile(p2);
+			Matcher m2 = r2.matcher(arg);
+			return m2.find();
+		}
+		return false;
 	}
 	private boolean checkIndirectX(String inst){
 		String pattern = "\\(\\$?[0-9a-f]{1,2},X\\)";

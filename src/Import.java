@@ -9,7 +9,9 @@ public class Import {
 		@param: str : the string of instructions to be parsed
 		@return: Assembly
 	*/
-	public static Assembly importInstructions(String str){
+
+
+    public static Assembly importInstructions(String str){
 		int index = 0;
 		int nlindex = 0;
 		int scindex = 0;
@@ -17,7 +19,7 @@ public class Import {
 		int memCounter = 0;
 
 		String[] instructions = new String[Global.MAX_MEMORY];
-		HashMap<String, Integer> labels = new HashMap<String, Integer>();
+        HashMap<String, Integer> labels = new HashMap<String, Integer>();
 
 		while (memCounter < Global.MAX_MEMORY){
 			nlindex = str.indexOf('\n', index);
@@ -35,10 +37,11 @@ public class Import {
 				if (scindex != -1){
 					//there is a comment
 					ins = ins.substring(0, scindex);
+					ins = ins.trim();
 				}
 				if (cindex != -1){
 					//there is a lable
-					if (cindex == ins.length() - 1){
+					if (cindex == ins.length() - 1 ){
 						//there is only the label
 						ins = ins.replace(':', ' ').trim();
 						instructions[memCounter] = "LABEL";
@@ -57,8 +60,10 @@ public class Import {
 					}
 				}
 				ins = ins.trim();
-				instructions[memCounter] = ins;
-				memCounter += 1;
+				if (ins.length() != 0){
+					instructions[memCounter] = ins;
+					memCounter += 1;
+				}
 				index = nlindex + 1;
 			}
 			else{
@@ -71,6 +76,7 @@ public class Import {
 					if (scindex != -1){
 						//there is a comment
 						ins = ins.substring(0, scindex);
+						ins = ins.trim();
 					}
 					if (cindex != -1){
 						//there is a lable
@@ -92,7 +98,9 @@ public class Import {
 							break;
 						}
 					}
-					instructions[memCounter] = ins;
+					if (ins.length() != 0){
+						instructions[memCounter] = ins;				
+					}
 					break;
 				}
 				break;

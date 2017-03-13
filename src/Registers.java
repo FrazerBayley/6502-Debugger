@@ -150,5 +150,28 @@ public class Registers {
 		
 	}
 
+	public static String registersToString(){
+	    String registerString = "";
+	    registerString = registerString.concat(" $PC: " + String.format(" "+"%04x", (int) readPC()).toUpperCase() + "    " + "$SP:   " + String.format(" "+"%02x", (int) readSP()).toUpperCase() + "\n");
+        registerString = registerString.concat(" $A:    " + String.format(" "+"%02x", (int) read8(Global.$A)).toUpperCase() + "\n");
+        registerString = registerString.concat(" $X:    " + String.format(" "+"%02x", (int) read8(Global.$X)).toUpperCase() + "\n");
+        registerString = registerString.concat(" $Y:    " + String.format(" "+"%02x", (int) read8(Global.$Y)).toUpperCase() + "\n");
+        registerString = registerString.concat(" $P:   0b" + String.format(""+"%08d",  Integer.parseInt(Integer.toBinaryString(read8(Global.$P)))) + "\n");
+        registerString = registerString.concat("Previous Instruction:");
+        String prevInstr = (String)DebuggerGUI.prevInstructionString;
+        String curInstr = (String)DebuggerGUI.instructionString;
+        if(prevInstr.equals(curInstr)){
+            registerString = registerString.concat("\n \n");
+        }else{
+            registerString = registerString.concat("\n" + prevInstr);
+        }
+        registerString = registerString.concat("Current Instruction: \n");
+        registerString = registerString.concat(curInstr);
+
+
+
+	    return registerString;
+    }
+
 	
 }
