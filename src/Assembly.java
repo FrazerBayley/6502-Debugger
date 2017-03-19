@@ -13,6 +13,7 @@ public class Assembly{
 	private Databank db;
 	private int lineCounter = 0;
 	private int[] lineLookup = new int[0x3FFF];
+	public String CodeError = "";
 
 
     /*@brief Initializes Assembly class, purpose is to hold instruction and
@@ -93,6 +94,7 @@ public class Assembly{
 				i++;
 				continue;
 			}
+			//System.out.println(instruction);
 			setupQueue(instruction);
 			lineCounter++;
 		}
@@ -113,16 +115,25 @@ public class Assembly{
 			// (1) Implicit / (2) Accumulator / (3) Immediate / (4) Zero Page / (5) Zero Page,X / (6) Zero Page,Y / (7) branch
 			// (8) Absolute / (9) Absolute,X / (10) Absolute,Y / (11) Indirect / (12) (Indirect,X) / (13) (Indirect,Y)
 		// have to run Immediate check before before ZeroPage
+		instruction = instruction.trim();
+		instruction = instruction.replaceAll("\\s+", " ");
+		if (instruction.split(" ")[0].length() != 3 || instruction.trim().charAt(instruction.length()-1) == ':'|| instruction.isEmpty()){
+            CodeError = instruction;
+			throw new java.lang.NullPointerException();
+		}
 		String instName = instruction.substring(0, 3);
-		String[] params = instruction.split(" ");
+		String[] params = instruction.split("\\s+");
 	    if (checkImplicit(instruction)){
-	    	System.out.println("IS IMPLICIT: " + instruction);
 	    	modebit = 1;
-	    	int opcode= db.getOPCode(instName, modebit);
+	    	try{
+                int opcode= db.getOPCode(instName, modebit);
+                addBytes(opcode);
+                binaryInstructions[i++] = opcode;
+            } catch(NullPointerException ex){
+                CodeError = instruction;
+                throw ex;
+            }
 
-	    	addBytes(opcode);
-			System.out.println("IS IMPLICIT: " + instruction + "opcode: " + Integer.toHexString(opcode));
-	    	binaryInstructions[i++] = opcode;
 	    }
 		else if (checkAbsoluteX(instruction)){
 			modebit = 9;
@@ -136,8 +147,13 @@ public class Assembly{
 	    	modebit = 11;
 	    	addToQueue(instName, modebit, params);
 	    }
+	    else if (checkImmediate(instruction)){
+	    	modebit = 3;
+	    	addToQueue(instName, modebit, params);
+	    }
 		else if (checkAbsolute(instruction)){
 			modebit = 8;
+
 			addToQueue(instName, modebit, params);
 		}
 	    else if (checkIndirectLabel(instruction)){
@@ -155,9 +171,8 @@ public class Assembly{
 	    }
 		else if (checkAbsoluteLabel(instruction)){
 			modebit = 8;
-			
 			int tmp = getLabelIndex(params[1]);
-			int index = lineLookup[tmp-1] + 1;
+			int index = lineLookup[tmp] + 1;
 			addToQueue(instName, modebit, index);
 		}
 	    else if (checkIndirectX(instruction)){
@@ -174,10 +189,6 @@ public class Assembly{
 			addBytes(opcode);
 			binaryInstructions[i++] = opcode;
 	    }
-	    else if (checkImmediate(instruction)){
-	    	modebit = 3;
-	    	addToQueue(instName, modebit, params);
-	    }
 	    else if (checkZeroPageX(instruction)){
 	    	modebit = 5;
 	    	addToQueue(instName, modebit, params);
@@ -192,19 +203,20 @@ public class Assembly{
 	    }
 	    else if (checkBranch(instruction)){
 	    	modebit = 7;
-	    	int index = 0;
+	    	int index = 0;   	
 			int tmp = getLabelIndex(params[1]);
 			//minus 1 for previous line, add 1 byte to it.
 			if(tmp == 0){
 				index = lineLookup[tmp] + 1;
-				System.out.println("index if tmp=0: " +index);
 			} else {
 				index = lineLookup[tmp-1] + 1;
-				System.out.println("index if tmp!==0: " +index);
 			}
 			addToQueue(instName, modebit, index);		
 	    }else {
-	    	System.out.println("Not an instruction: " + instruction);
+	        if(instruction.trim().charAt(instruction.length()-1) != ':' || instruction.isEmpty()){
+                CodeError = instruction;
+                throw new java.lang.NullPointerException();
+            }
 		}
 		return modebit;
 	}
@@ -212,8 +224,7 @@ public class Assembly{
 	private void addToQueue(String instName, int modebit, String[] params) {
 		int opcode= db.getOPCode(instName, modebit);
 		addBytes(opcode);
-		System.out.println(instName + " and param: " + Arrays.toString(params));
-		int paramNum = Integer.parseInt( params[1].replaceAll("[^-?0-9A-Fa-f]+", ""), 16);
+		int paramNum = Integer.parseInt( params[1].replaceAll("[^0-9A-Fa-f]+", ""), 16);
     	binaryInstructions[i++] = opcode;
     	// check if 16 bit
     	if (modebit >= 8 && modebit <= 11){
@@ -235,7 +246,7 @@ public class Assembly{
 	}
 
 	private boolean checkImmediate(String inst){
-		String pattern = "#\\$?[0-9a-f]{1,2}";
+		String pattern = "#\\$?[0-9a-fA-F]{1,2}";
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
 		return m.find();
@@ -257,19 +268,19 @@ public class Assembly{
 		return true;
 	}
 	private boolean checkZeroPage(String inst){
-		String pattern = "\\$?[0-9a-f]{2,3}";
+		String pattern = "(\\$| )[0-9a-fA-F]{2}$";
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
 		return m.find();
 	}
 	private boolean checkZeroPageX(String inst){
-		String pattern = "\\$?[0-9a-f]{2},X";
+		String pattern = "\\$?[0-9a-fA-F]{2},X";
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
 		return m.find();
 	}
 	private boolean checkZeroPageY(String inst){
-		String pattern = "\\$?[0-9a-f]{2},Y";
+		String pattern = "\\$?[0-9a-fA-F]{2},Y";
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
 		return m.find();
@@ -280,7 +291,6 @@ public class Assembly{
 		Pattern argMatcher = Pattern.compile(argPattern);
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
-		System.out.println("In branch: " + inst);
 		if (m.find()){
 			String[] s = inst.split(" ");
 			if (s.length < 2) return false;
@@ -291,7 +301,7 @@ public class Assembly{
 		return false;
 	}
 	private boolean checkAbsolute(String inst){
-		String pattern = "\\$?[0-9a-f]{3,4}";
+		String pattern = "(\\$| )[0-9a-fA-F]{3,4}$";
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
 		return m.find();
@@ -312,19 +322,19 @@ public class Assembly{
 		return false;
 	}
 	private boolean checkAbsoluteX(String inst){
-		String pattern = "\\$?[0-9a-f]{3,4},X";
+		String pattern = "\\$?[0-9a-fA-F]{3,4},X";
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
 		return m.find();
 	}
 	private boolean checkAbsoluteY(String inst){
-		String pattern = "\\$?[0-9a-f]{3,4},Y";
+		String pattern = "\\$?[0-9a-fA-F]{3,4},Y";
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
 		return m.find();
 	}
 	private boolean checkIndirect(String inst){
-		String pattern = "\\(\\$?[0-9a-f]{3,4}\\)";
+		String pattern = "\\(\\$?[0-9a-fA-F]{3,4}\\)";
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
 		return m.find();
@@ -345,13 +355,13 @@ public class Assembly{
 		return false;
 	}
 	private boolean checkIndirectX(String inst){
-		String pattern = "\\(\\$?[0-9a-f]{1,2},X\\)";
+		String pattern = "\\(\\$?[0-9a-fA-F]{1,2},X\\)";
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
 		return m.find();
 	}
 	private boolean checkIndirectY(String inst){
-		String pattern = "\\(\\$?[0-9a-f]{1,2}\\),Y";
+		String pattern = "\\(\\$?[0-9a-fA-F]{1,2}\\),Y";
 		Pattern r = Pattern.compile(pattern);
 		Matcher m = r.matcher(inst);
 		return m.find();

@@ -15,7 +15,7 @@ public class Debugger {
         if (result == JFileChooser.APPROVE_OPTION) {
             DebuggerGUI.textArea.setText("");
             DebuggerGUI.selectedFile = DebuggerGUI.fileChooser.getSelectedFile();
-            System.out.println("Selected file: " + DebuggerGUI.selectedFile.getAbsolutePath());
+            //System.out.println("Selected file: " + DebuggerGUI.selectedFile.getAbsolutePath());
             try {
                 BufferedReader in = new BufferedReader(new FileReader(DebuggerGUI.selectedFile));
                 String line = in.readLine();
@@ -33,14 +33,16 @@ public class Debugger {
         return false;
     }
 
-    public static void saveConfirmation(String message){
+    public static boolean saveConfirmation(String message){
         int ret = JOptionPane.showConfirmDialog(DebuggerGUI.frame, message, "Save changes?", JOptionPane.YES_NO_CANCEL_OPTION);
         if (ret == JOptionPane.CANCEL_OPTION){
-            return;
+            return true;
         }
         if (ret == JOptionPane.YES_OPTION){
             saveFile();
+            return false;
         }
+        return false;
     }
 
 
@@ -60,7 +62,7 @@ public class Debugger {
                 writer.flush();
                 // save to file
             }catch(FileNotFoundException ex){
-
+                System.out.println("file not found");
             }
 
         }
@@ -77,7 +79,7 @@ public class Debugger {
             }
 
         }catch(FileNotFoundException ex){
-
+            System.out.println("file not found");
         }
     }
 
@@ -99,17 +101,39 @@ public class Debugger {
         return 0;
     }
 
+    public static int checkLine(JTextArea field, int stackIndex){
+        int lineCounter = 0;
+        int numberNewLines = 0;
+        for (String line : field.getText().split("\\n")){
+            //System.out.println(line.subSequence(0, 4) + " and comparing" + "$" + Integer.toHexString(Registers.readPC()));
+            if(line.trim().isEmpty() || line.subSequence(0, 1).equals(";") || line.trim().charAt(0) == ';'){
+                numberNewLines++;
+            }else{
+                if(lineCounter == stackIndex){
+                    return lineCounter++ + numberNewLines;}
+                lineCounter++;
+            }
+        }
+        return lineCounter + numberNewLines;
+    }
+
     public static boolean assemble(){
 
         DebuggerGUI.asm = Import.importInstructions(DebuggerGUI.textArea.getText());
-        DebuggerGUI.currentInstructions = DebuggerGUI.asm.getAllInstructions();
-        Memory.clean();
-        Registers.init_Memory();
-        Memory.setMemory(DebuggerGUI.asm.assemble());
-        Memory.instrToString();
-        DebuggerGUI.enableButtons();
-        DebuggerGUI.updateGUI();
-        DebuggerGUI.updateGUI();
+        try{
+            DebuggerGUI.currentInstructions = DebuggerGUI.asm.getAllInstructions();
+            Memory.clean();
+            Registers.init_Memory();
+            Memory.setMemory(DebuggerGUI.asm.assemble());
+            //Memory.instrToString();
+            DebuggerGUI.enableButtons();
+            DebuggerGUI.updateGUI();
+            DebuggerGUI.updateGUI();
+        } catch(NullPointerException ex){
+            System.out.println("Error found in assembled code.");
+            return false;
+        }
+
 
 
         return true;

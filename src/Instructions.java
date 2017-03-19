@@ -48,9 +48,11 @@ public class Instructions {
 	public static void LDA_ABY(int value16){Registers.write8(Global.$A, Memory.read( ALU.ADD(value16,Registers.read8(Global.$Y))));
 	checkArithmeticFlags(Registers.read8(Global.$A));}
 	//0xA1
-	public static void LDA_IDX(int value8){}
+	public static void LDA_IDX(int value8){Registers.write8(Global.$A, ALU.ADD(Registers.read8(Global.$X), Memory.read(value8)));
+	checkArithmeticFlags(Registers.read8(Global.$A));}
 	//0xB1
-	public static void LDA_IDY(int value8){}
+	public static void LDA_IDY(int value8){Registers.write8(Global.$A, Memory.read(ALU.ADD(Registers.read8(Global.$Y), value8)));
+	checkArithmeticFlags(Registers.read8(Global.$A));}
 
 /* ---------------------- LDX ---------------------- *
 * @brief Load Index X with Memory
@@ -113,9 +115,9 @@ public class Instructions {
 	//0x99
 	public static void STA_ABY(int value16){Memory.write(ALU.ADD( value16, Registers.read8(Global.$Y)), Registers.read8(Global.$A) );}
 	//0x81
-	public static void STA_IDX(int value8){}
+	public static void STA_IDX(int value8){Memory.write(ALU.ADD(Registers.read8(Global.$X), Memory.read(value8)), Registers.read8(Global.$A));}
 	//0x91
-	public static void STA_IDY(int value8){}
+	public static void STA_IDY(int value8){Memory.write(Memory.read(ALU.ADD(Registers.read8(Global.$Y), value8)), Registers.read8(Global.$A));}
 
 /* ---------------------- STX ---------------------- *
 * @brief Store Index X in Memory
@@ -700,7 +702,7 @@ public class Instructions {
 * 				-	-	-	-	-	-
 */
     //0x4c
-    public static void JMP_AB(int value16){Registers.writePC(value16);}
+    public static void JMP_AB(int value16){Registers.writePC(value16 + 0x200);}
     //0x6C
     public static void JMP_ID(int value16){Registers.writePC(Memory.read(value16));} //TODO CHECK
 
@@ -751,7 +753,7 @@ public class Instructions {
 * 				-	-	-	-	-	-
 */
 	//0x90
-	public static void BCC_REL(int value8){if(!Registers.isCarry()){Registers.writePC(ALU.ADD(Registers.readPC(), value8));}}
+	public static void BCC_REL(int value8){if(!Registers.isCarry()){Registers.writePC(value8 + 0x200);}}
 
 /* ---------------------- BCS ---------------------- *
 * @brief Branch on Carry Set
@@ -760,7 +762,7 @@ public class Instructions {
 * 				-	-	-	-	-	-
 */
 	//0xB0
-	public static void BCS_REL(int value8){if(Registers.isCarry()){Registers.writePC(ALU.ADD(Registers.readPC(), value8));}}
+	public static void BCS_REL(int value8){if(Registers.isCarry()){Registers.writePC(value8 + 0x200);}}
 
 /* ---------------------- BEQ ---------------------- *
 * @brief Branch on Result Zero
@@ -769,7 +771,7 @@ public class Instructions {
 * 				-	-	-	-	-	-
 */
 	//0xF0
-	public static void BEQ_REL(int value8){if(Registers.isZero()){Registers.writePC(ALU.ADD(Registers.readPC(), value8));}}
+	public static void BEQ_REL(int value8){if(Registers.isZero()){Registers.writePC(value8 + 0x200);}}
 
 /* ---------------------- BMI ---------------------- *
 * @brief Branch on Result Minus
@@ -778,7 +780,7 @@ public class Instructions {
 * 				-	-	-	-	-	-
 */
 	//0x30
-	public static void BMI_REL(int value8){if(Registers.isNegative()){Registers.writePC(ALU.ADD(Registers.readPC(), value8));}}
+	public static void BMI_REL(int value8){if(Registers.isNegative()){Registers.writePC(value8 + 0x200);}}
 
 /* ---------------------- BNE ---------------------- *
 * @brief Branch on Result not Zero
@@ -796,7 +798,7 @@ public class Instructions {
 * 				-	-	-	-	-	-
 */
 	//0x10
-	public static void BPL_REL(int value8){if(!Registers.isNegative()){Registers.writePC(ALU.ADD(Registers.readPC(), value8));}}
+	public static void BPL_REL(int value8){if(!Registers.isNegative()){Registers.writePC(value8 + 0x200);}}
 
 /* ---------------------- BVC ---------------------- *
 * @brief Branch on Overflow Clear
@@ -805,7 +807,7 @@ public class Instructions {
 * 				-	-	-	-	-	-
 */
 	//0x50
-	public static void BVC_REL(int value8){if(!Registers.isOverflow()){Registers.writePC(ALU.ADD(Registers.readPC(), value8));}}
+	public static void BVC_REL(int value8){if(!Registers.isOverflow()){Registers.writePC(value8 + 0x200);}}
 
 /* ---------------------- BVS ---------------------- *
 * @brief Branch on Overflow Set
@@ -814,7 +816,7 @@ public class Instructions {
 * 				-	-	-	-	-	-
 */
 	//0x50
-	public static void BVS_REL(int value8){if(Registers.isOverflow()){Registers.writePC(ALU.ADD(Registers.readPC(), value8));}}
+	public static void BVS_REL(int value8){if(Registers.isOverflow()){Registers.writePC(value8 + 0x200);}}
 
 /* ====================== STATUS/FLAG OPERATIONS =====================
 * The following instructions change the values of specific status flags.

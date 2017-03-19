@@ -145,11 +145,20 @@ public class DebuggerGUI extends JFrame {
         frame.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                boolean isCancel = true;
                 if(Debugger.isDifferent() ||  textArea.getText().equals("")) {
-                    Debugger.saveConfirmation("Save changes before exiting?");
+                    isCancel = Debugger.saveConfirmation("Save changes before exiting?");
+                } else{
+                    int quit = JOptionPane.showConfirmDialog(null, "Quit?");
+                    if(quit == JOptionPane.OK_OPTION){
+                        isCancel = false;
+                    }
                 }
-                frame.dispose();
-                System.exit(0);
+
+                if(!isCancel){
+                    frame.dispose();
+                    System.exit(0);
+                }
 
             }
         });
@@ -406,7 +415,9 @@ public class DebuggerGUI extends JFrame {
 
         btnAssemble.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                Debugger.assemble();
+                if(!Debugger.assemble()){
+                    JOptionPane.showMessageDialog(null,"Instruction: \"" + asm.CodeError +"\" is not the acceptable syntax of this 6502 Debugger. Please refer to provided programming manual.");
+                };
             }
         });
 
@@ -416,7 +427,6 @@ public class DebuggerGUI extends JFrame {
                 JOptionPane.showMessageDialog(frame, popupPanel,
                         "Memory",
                         JOptionPane.PLAIN_MESSAGE);
-                System.out.println("hello");
             }
         });
     }
@@ -491,10 +501,18 @@ public class DebuggerGUI extends JFrame {
         JMenuItem quitMenuItem = new JMenuItem("Quit", null);
         quitMenuItem.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                if(!Debugger.isDifferent() || !textArea.getText().equals("")){
-                    Debugger.saveConfirmation("Save changes before quitting?");
+                boolean isCancel = true;
+                if(Debugger.isDifferent() ||  textArea.getText().equals("")) {
+                    isCancel = Debugger.saveConfirmation("Save changes before exiting?");
+                } else{
+                    int quit = JOptionPane.showConfirmDialog(null, "Quit?");
+                    if(quit == JOptionPane.OK_OPTION){
+                        isCancel = false;
+                    }
+                }if(!isCancel){
+                    frame.dispose();
+                    System.exit(0);
                 }
-                System.exit(0);
             }
         });
         menu.add(quitMenuItem);
@@ -537,16 +555,16 @@ public class DebuggerGUI extends JFrame {
         //highlighting
         try{
             int curLine = Debugger.checkLine(stackViewer);
+            int curInstrLine = Debugger.checkLine(textArea,curLine - 0x100);
             int startStack = stackViewer.getLineStartOffset(curLine);
             int endStack = stackViewer.getLineEndOffset(curLine);
             //finding current line
             prevInstructionString = instructionString;
             instructionString = stackViewer.getText().subSequence(startStack, endStack);
             stackViewer.getHighlighter().addHighlight(startStack, endStack, currentLine);
-            System.out.println("Line is " + curLine);
             textArea.getHighlighter().removeAllHighlights();
-            int startAssembly = textArea.getLineStartOffset(curLine - 0x100);
-            int endAssembly = textArea.getLineEndOffset(curLine -0x100);
+            int startAssembly = textArea.getLineStartOffset(curInstrLine);
+            int endAssembly = textArea.getLineEndOffset(curInstrLine);
             textArea.getHighlighter().addHighlight(startAssembly, endAssembly, currentLine);
 
 
